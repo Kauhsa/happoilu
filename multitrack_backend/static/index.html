@@ -1,0 +1,122 @@
+<html>
+  <head>
+    <title>trol</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.1/css/font-awesome.min.css">
+    <link rel="stylesheet" href="playlist.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js"></script>
+    <script src="waveform-playlist.var.min.js"></script>
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        width: 100%;
+      }
+
+      body {
+        position: relative;
+      }
+
+      #tree {
+        height: 100%;
+        width: 300px;
+        position: absolute;
+        overflow: scroll;
+        left: 0;
+        top: 0;
+      }
+
+      #player {
+        height: calc(100% - 30px);
+        width: calc(100% - 300px);
+        position: absolute;
+        right: 0;
+        top: 30px;
+        overflow: scroll;
+      }
+
+      #controls {
+        position: absolute;
+        top: 0;
+        left: 300px;
+        width: calc(100% - 300px);
+        height: 30px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="tree"></div>
+    <div id="controls">
+      <button id="play">Play</button>
+      <button id="stop">Stop</button>
+      <button id="pause">Pause</button>
+    </div>
+    <div id="player"></div>
+
+    <script>
+      function getJsTreeNode(data) {
+        if (data.type === 'dir') {
+          return {
+            text: data.name,
+            children: data.contents.map(getJsTreeNode),
+            icon: "fa fa-folder",
+            state: {
+              opened: true
+            }
+          }
+        } else {
+          return {
+            text: data.name,
+            data: data.contents,
+            icon: "fa fa-music"
+          }
+        }
+      }
+
+      var playlist = new WaveformPlaylist.init({
+        jsLocation: "js/",
+        mono: true,
+        waveHeight: 100,
+        container: document.getElementById("player"),
+        state: 'cursor',
+        controls: {
+          show: true,
+          width: 200
+        }
+      });
+
+      $('#play').click(function() {
+        playlist.getEventEmitter().emit('play')
+      });
+
+      $('#stop').click(function() {
+        playlist.getEventEmitter().emit('stop')
+      });
+
+      $('#pause').click(function() {
+        playlist.getEventEmitter().emit('pause')
+      });
+
+      $.get('data', function(data) {
+        $('#tree')
+          .jstree({ core: { data : [getJsTreeNode(data)] }})
+          .on("select_node.jstree", function (e, data) {
+            if (!data.node.data) {
+              return
+            }
+            $("#tree").jstree(true).set_icon(data.node.id, "fa fa-circle-o-notch fa-spin");
+            playlist.getEventEmitter().emit('stop');
+            playlist.tracks = []
+            playlist.updateEditor()
+            playlist.load(data.node.data).then(function() {
+              $("#tree").jstree(true).set_icon(data.node.id, "fa fa-music");
+            });
+          })
+      });
+    </script>
+  </body>
+</html>
